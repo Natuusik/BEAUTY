@@ -2,9 +2,7 @@
 const SUPABASE_URL = 'https://qjdeukalfoxpuolejuzg.supabase.co/rest/v1/products';
 const SUPABASE_ANON_KEY = 'sb_publishable_z2OWHa9xj1JMjHttwIqHQQ_G7Di2NrJ';
 
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// 1. База товаров прямо в коде (гарантированно работает без ошибок)
+// 1. База товаров прямо в коде (работает стабильно и быстро)
 const products = [
   {
     id: 1,
@@ -44,10 +42,11 @@ const products = [
   }
 ];
 
-// 2. Состояние корзины (загрузка из localStorage)
+// 2. Состояние корзины и скидки (загрузка из localStorage — «базы» браузера)
 let cart = JSON.parse(localStorage.getItem('aura_cart')) || {};
 let discountPercent = Number(localStorage.getItem('aura_discount')) || 0;
 
+// Функция сохранения данных корзины в браузер
 function saveCartToStorage() {
   localStorage.setItem('aura_cart', JSON.stringify(cart));
   localStorage.setItem('aura_discount', discountPercent);
@@ -118,7 +117,7 @@ function renderProducts() {
 
 function addToCart(productId) {
   cart[productId] = (cart[productId] || 0) + 1;
-  saveCartToStorage();
+  saveCartToStorage(); // Сохраняем в localStorage
   renderProducts();
   updateCart();
 }
@@ -130,14 +129,14 @@ function changeQty(productId, delta) {
   } else {
     cart[productId] = newQty;
   }
-  saveCartToStorage();
+  saveCartToStorage(); // Сохраняем в localStorage
   renderProducts();
   updateCart();
 }
 
 function removeItem(productId) {
   delete cart[productId];
-  saveCartToStorage();
+  saveCartToStorage(); // Сохраняем в localStorage
   renderProducts();
   updateCart();
 }
@@ -265,5 +264,7 @@ document.getElementById('checkout-btn').addEventListener('click', () => {
 });
 
 // Запуск при загрузке страницы
+renderProducts();
+updateCart();
 renderProducts();
 updateCart();
