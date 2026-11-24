@@ -4,10 +4,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_z2OWHa9xj1JMjHttwIqHQQ_G7Di2NrJ';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Массив товаров будет заполняться данными из базы
-let products = [];
-
-// 1. База товаров прямо в коде (гарантированно работает без локального сервера)
+// 1. База товаров прямо в коде (гарантированно работает без ошибок)
 const products = [
   {
     id: 1,
@@ -47,7 +44,7 @@ const products = [
   }
 ];
 
-// 2. Состояние корзины
+// 2. Состояние корзины (загрузка из localStorage)
 let cart = JSON.parse(localStorage.getItem('aura_cart')) || {};
 let discountPercent = Number(localStorage.getItem('aura_discount')) || 0;
 
@@ -60,7 +57,7 @@ function formatPrice(num) {
   return num.toLocaleString('ru-RU') + ' ₽';
 }
 
-// Управление корзиной (Drawer)
+// Управление выдвижной корзиной (Drawer)
 const cartDrawer = document.getElementById('cart-drawer');
 const cartOverlay = document.getElementById('cart-overlay');
 
@@ -80,7 +77,11 @@ document.getElementById('open-cart-btn').addEventListener('click', openCart);
 document.getElementById('close-cart-btn').addEventListener('click', closeCart);
 cartOverlay.addEventListener('click', closeCart);
 
-// Отрисовка карточек
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeCart();
+});
+
+// 3. Отрисовка карточек товаров в каталоге
 function renderProducts() {
   const grid = document.getElementById('products-grid');
   if (!grid) return;
@@ -141,6 +142,7 @@ function removeItem(productId) {
   updateCart();
 }
 
+// 4. Расчеты и обновление корзины
 function updateCart() {
   const cartItemsContainer = document.getElementById('cart-items');
   if (!cartItemsContainer) return;
@@ -262,6 +264,6 @@ document.getElementById('checkout-btn').addEventListener('click', () => {
   closeCart();
 });
 
-// Запуск
+// Запуск при загрузке страницы
 renderProducts();
 updateCart();
