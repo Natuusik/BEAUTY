@@ -1,13 +1,13 @@
-// 1. Инициализация Supabase (замени на свои ключи из настроек проекта)
+// 1. Подключение к Supabase (твои ключи)
 const SUPABASE_URL = 'https://qjdeukalfoxpuolejuzg.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_z2OWHa9xj1JMjHttwIqHQQ_G7Di2NrJ';
 
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Массив товаров будет заполняться данными из базы
+// Массив товаров, который будет заполняться из базы данных
 let products = [];
 
-// Состояние корзины: загружаем из localStorage
+// 2. Состояние корзины: загружаем из localStorage («базы» браузера)
 let cart = JSON.parse(localStorage.getItem('aura_cart')) || {};
 let discountPercent = Number(localStorage.getItem('aura_discount')) || 0;
 
@@ -46,36 +46,28 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeCart();
 });
 
-// 2. Асинхронная загрузка товаров из базы данных Supabase
+// 3. Загрузка товаров из облачной базы данных Supabase
 async function fetchProductsFromSupabase() {
-  const loadingEl = document.getElementById('loading-catalog');
-  
   try {
-    // Делаем запрос к таблице 'products' в Supabase
     const { data, error } = await supabaseClient
       .from('products')
       .select('*')
       .order('id', { ascending: true });
 
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
-    products = data;
-    loadingEl.style.display = 'none'; // Скрываем текст загрузки
+    products = data || [];
     renderProducts();
     updateCart();
-
   } catch (error) {
-    console.error('Ошибка загрузки данных:', error);
-    loadingEl.textContent = 'Не удалось загрузить каталог из базы данных. Проверьте подключения.';
-    loadingEl.style.color = '#c0392b';
+    console.error('Ошибка загрузки товаров из базы:', error);
   }
 }
 
-// 3. Отрисовка карточек в каталоге
+// 4. Отрисовка карточек в каталоге
 function renderProducts() {
   const grid = document.getElementById('products-grid');
+  if (!grid) return;
   grid.innerHTML = '';
 
   products.forEach(product => {
@@ -107,7 +99,7 @@ function renderProducts() {
   });
 }
 
-// 4. Добавление товара
+// 5. Управление корзиной
 function addToCart(productId) {
   cart[productId] = (cart[productId] || 0) + 1;
   saveCartToStorage();
@@ -115,7 +107,6 @@ function addToCart(productId) {
   updateCart();
 }
 
-// 5. Изменение количества внутри корзины
 function changeQty(productId, delta) {
   const newQty = (cart[productId] || 0) + delta;
 
@@ -130,7 +121,6 @@ function changeQty(productId, delta) {
   updateCart();
 }
 
-// 6. Удаление товара
 function removeItem(productId) {
   delete cart[productId];
   saveCartToStorage();
@@ -138,16 +128,16 @@ function removeItem(productId) {
   updateCart();
 }
 
-// 7. Отрисовка корзины и расчеты
+// 6. Расчеты и обновление интерфейса корзины
 function updateCart() {
   const cartItemsContainer = document.getElementById('cart-items');
+  if (!cartItemsContainer) return;
   cartItemsContainer.innerHTML = '';
 
   let totalCount = 0;
   let subtotal = 0;
 
   for (const id in cart) {
-    // Ищем товар по id среди данных, загруженных из Supabase
     const product = products.find(p => p.id === Number(id));
     if (!product) continue;
     
@@ -185,11 +175,9 @@ function updateCart() {
     cartItemsContainer.innerHTML = '<p class="empty-cart">Корзина пока пуста.<br>Добавьте понравившиеся средства из каталога!</p>';
   }
 
-  // Расчет скидки
   const discountAmount = Math.round(subtotal * (discountPercent / 100));
   const afterDiscount = subtotal - discountAmount;
 
-  // Расчет доставки (бесплатно от 3 500 ₽)
   let delivery = 0;
   if (totalCount > 0 && afterDiscount < 3500) {
     delivery = 350;
@@ -197,7 +185,6 @@ function updateCart() {
 
   const finalTotal = afterDiscount + delivery;
 
-  // Обновление интерфейса
   document.getElementById('header-count').textContent = totalCount;
   document.getElementById('header-total').textContent = formatPrice(finalTotal);
   document.getElementById('drawer-count').textContent = totalCount;
@@ -229,7 +216,6 @@ function updateCart() {
   document.getElementById('clear-cart-btn').style.display = totalCount > 0 ? 'block' : 'none';
 }
 
-// Очистка корзины
 document.getElementById('clear-cart-btn').addEventListener('click', () => {
   cart = {};
   discountPercent = 0;
@@ -241,7 +227,6 @@ document.getElementById('clear-cart-btn').addEventListener('click', () => {
   updateCart();
 });
 
-// Промокод
 document.getElementById('apply-promo-btn').addEventListener('click', () => {
   const input = document.getElementById('promo-input').value.trim().toUpperCase();
   const msg = document.getElementById('promo-message');
@@ -260,7 +245,6 @@ document.getElementById('apply-promo-btn').addEventListener('click', () => {
   updateCart();
 });
 
-// Оформление заказа
 document.getElementById('checkout-btn').addEventListener('click', () => {
   const totalText = document.getElementById('final-price').textContent;
   alert(`Спасибо за заказ! Итоговая сумма: ${totalText}`);
@@ -274,8 +258,8 @@ document.getElementById('checkout-btn').addEventListener('click', () => {
   
   renderProducts();
   updateCart();
-  closeCart();
+    closeCart();
 });
 
-// Запуск приложения — загружаем данные из Supabase при старте
+// Запуск загрузки данных из Supabase при старте страницы
 fetchProductsFromSupabase();
