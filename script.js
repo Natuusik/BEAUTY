@@ -7,22 +7,60 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 // Массив товаров будет заполняться данными из базы
 let products = [];
 
-// Состояние корзины: загружаем из localStorage
+// 1. База товаров прямо в коде (гарантированно работает без локального сервера)
+const products = [
+  {
+    id: 1,
+    badge: 'Хит продаж',
+    icon: '🧴',
+    title: 'Увлажняющий крем с центеллой',
+    desc: 'Интенсивное увлажнение на 24 часа без липкости. Успокаивает и укрепляет защитный барьер.',
+    volume: '50 мл • Все типы кожи',
+    price: 1890
+  },
+  {
+    id: 2,
+    badge: 'Тренд',
+    icon: '💄',
+    title: 'Масло-тинт для губ Mirror Glow',
+    desc: 'Зеркальный глянцевый финиш и уход бальзама. Подстраивается под естественный pH губ.',
+    volume: '4.5 мл • Нежный розовый',
+    price: 1250
+  },
+  {
+    id: 3,
+    badge: 'Очищение',
+    icon: '✨',
+    title: 'Энзимная пудра с витамином С',
+    desc: 'Деликатное обновление кожи без скрабирующих частиц. Сужает поры и выравнивает тон.',
+    volume: '75 г • Хватает на 4 мес.',
+    price: 1650
+  },
+  {
+    id: 4,
+    badge: 'Новинка',
+    icon: '💧',
+    title: 'Сыворотка с пептидами и ниацинамидом',
+    desc: 'Повышает упругость кожи, разглаживает мелкие морщинки и возвращает здоровое сияние.',
+    volume: '30 мл • Антивозрастной уход',
+    price: 2400
+  }
+];
+
+// 2. Состояние корзины
 let cart = JSON.parse(localStorage.getItem('aura_cart')) || {};
 let discountPercent = Number(localStorage.getItem('aura_discount')) || 0;
 
-// Сохранение корзины в localStorage
 function saveCartToStorage() {
   localStorage.setItem('aura_cart', JSON.stringify(cart));
   localStorage.setItem('aura_discount', discountPercent);
 }
 
-// Форматирование цены
 function formatPrice(num) {
   return num.toLocaleString('ru-RU') + ' ₽';
 }
 
-// Управление открытием и закрытием корзины
+// Управление корзиной (Drawer)
 const cartDrawer = document.getElementById('cart-drawer');
 const cartOverlay = document.getElementById('cart-overlay');
 
@@ -42,40 +80,10 @@ document.getElementById('open-cart-btn').addEventListener('click', openCart);
 document.getElementById('close-cart-btn').addEventListener('click', closeCart);
 cartOverlay.addEventListener('click', closeCart);
 
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeCart();
-});
-
-// 2. Асинхронная загрузка товаров из базы данных Supabase
-async function fetchProductsFromSupabase() {
-  const loadingEl = document.getElementById('loading-catalog');
-  
-  try {
-    // Делаем запрос к таблице 'products' в Supabase
-    const { data, error } = await supabaseClient
-      .from('products')
-      .select('*')
-      .order('id', { ascending: true });
-
-    if (error) {
-      throw error;
-    }
-
-    products = data;
-    loadingEl.style.display = 'none'; // Скрываем текст загрузки
-    renderProducts();
-    updateCart();
-
-  } catch (error) {
-    console.error('Ошибка загрузки данных:', error);
-    loadingEl.textContent = 'Не удалось загрузить каталог из базы данных. Проверьте подключения.';
-    loadingEl.style.color = '#c0392b';
-  }
-}
-
-// 3. Отрисовка карточек в каталоге
+// Отрисовка карточек
 function renderProducts() {
   const grid = document.getElementById('products-grid');
+  if (!grid) return;
   grid.innerHTML = '';
 
   products.forEach(product => {
@@ -107,7 +115,6 @@ function renderProducts() {
   });
 }
 
-// 4. Добавление товара
 function addToCart(productId) {
   cart[productId] = (cart[productId] || 0) + 1;
   saveCartToStorage();
@@ -115,22 +122,18 @@ function addToCart(productId) {
   updateCart();
 }
 
-// 5. Изменение количества внутри корзины
 function changeQty(productId, delta) {
   const newQty = (cart[productId] || 0) + delta;
-
   if (newQty <= 0) {
     delete cart[productId];
   } else {
     cart[productId] = newQty;
   }
-
   saveCartToStorage();
   renderProducts();
   updateCart();
 }
 
-// 6. Удаление товара
 function removeItem(productId) {
   delete cart[productId];
   saveCartToStorage();
@@ -138,19 +141,17 @@ function removeItem(productId) {
   updateCart();
 }
 
-// 7. Отрисовка корзины и расчеты
 function updateCart() {
   const cartItemsContainer = document.getElementById('cart-items');
+  if (!cartItemsContainer) return;
   cartItemsContainer.innerHTML = '';
 
   let totalCount = 0;
   let subtotal = 0;
 
   for (const id in cart) {
-    // Ищем товар по id среди данных, загруженных из Supabase
     const product = products.find(p => p.id === Number(id));
     if (!product) continue;
-    
     const qty = cart[id];
     const itemTotal = product.price * qty;
 
@@ -160,20 +161,17 @@ function updateCart() {
     const itemHTML = `
       <div class="cart-item">
         <div class="cart-item-icon">${product.icon}</div>
-
         <div class="cart-item-body">
           <div class="cart-item-title">${product.title}</div>
           <div class="cart-item-unit-price">${formatPrice(product.price)} / шт.</div>
-
           <div class="qty-control">
-            <button type="button" onclick="changeQty(${product.id}, -1)" title="Уменьшить">−</button>
+            <button type="button" onclick="changeQty(${product.id}, -1)">−</button>
             <span>${qty}</span>
-            <button type="button" onclick="changeQty(${product.id}, 1)" title="Увеличить">+</button>
+            <button type="button" onclick="changeQty(${product.id}, 1)">+</button>
           </div>
         </div>
-
         <div class="cart-item-right">
-          <button type="button" class="remove-item-btn" onclick="removeItem(${product.id})" title="Удалить товар">✕</button>
+          <button type="button" class="remove-item-btn" onclick="removeItem(${product.id})">✕</button>
           <span class="cart-item-sum">${formatPrice(itemTotal)}</span>
         </div>
       </div>
@@ -185,19 +183,11 @@ function updateCart() {
     cartItemsContainer.innerHTML = '<p class="empty-cart">Корзина пока пуста.<br>Добавьте понравившиеся средства из каталога!</p>';
   }
 
-  // Расчет скидки
   const discountAmount = Math.round(subtotal * (discountPercent / 100));
   const afterDiscount = subtotal - discountAmount;
-
-  // Расчет доставки (бесплатно от 3 500 ₽)
-  let delivery = 0;
-  if (totalCount > 0 && afterDiscount < 3500) {
-    delivery = 350;
-  }
-
+  let delivery = (totalCount > 0 && afterDiscount < 3500) ? 350 : 0;
   const finalTotal = afterDiscount + delivery;
 
-  // Обновление интерфейса
   document.getElementById('header-count').textContent = totalCount;
   document.getElementById('header-total').textContent = formatPrice(finalTotal);
   document.getElementById('drawer-count').textContent = totalCount;
@@ -229,7 +219,6 @@ function updateCart() {
   document.getElementById('clear-cart-btn').style.display = totalCount > 0 ? 'block' : 'none';
 }
 
-// Очистка корзины
 document.getElementById('clear-cart-btn').addEventListener('click', () => {
   cart = {};
   discountPercent = 0;
@@ -241,7 +230,6 @@ document.getElementById('clear-cart-btn').addEventListener('click', () => {
   updateCart();
 });
 
-// Промокод
 document.getElementById('apply-promo-btn').addEventListener('click', () => {
   const input = document.getElementById('promo-input').value.trim().toUpperCase();
   const msg = document.getElementById('promo-message');
@@ -260,22 +248,20 @@ document.getElementById('apply-promo-btn').addEventListener('click', () => {
   updateCart();
 });
 
-// Оформление заказа
 document.getElementById('checkout-btn').addEventListener('click', () => {
   const totalText = document.getElementById('final-price').textContent;
   alert(`Спасибо за заказ! Итоговая сумма: ${totalText}`);
-  
   cart = {};
   discountPercent = 0;
   localStorage.removeItem('aura_cart');
   localStorage.removeItem('aura_discount');
   document.getElementById('promo-input').value = '';
   document.getElementById('promo-message').textContent = '';
-  
   renderProducts();
   updateCart();
   closeCart();
 });
 
-// Запуск приложения — загружаем данные из Supabase при старте
-fetchProductsFromSupabase();
+// Запуск
+renderProducts();
+updateCart();
